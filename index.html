@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ERP - Supabase</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#f4f6f9;--c:#fff;--t:#1d2433;--m:#667085;--p:#1f6feb;--b:#dfe3ea;--r:#d92d20;--g:#12873a}
+@media(prefers-color-scheme:dark){:root{--bg:#10141c;--c:#1a2030;--t:#e7eaf0;--m:#98a2b3;--b:#2c3447}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px system-ui,'Segoe UI',Tahoma,sans-serif}
+#app{display:flex;min-height:100vh}nav{width:170px;background:var(--c);border-inline-end:1px solid var(--b);padding:8px;flex-shrink:0}
+nav a{display:block;padding:9px 10px;border-radius:6px;cursor:pointer}nav a.on{background:var(--p);color:#fff}
+main{flex:1;padding:14px;min-width:0}h2{margin:0 0 12px}
+.card{background:var(--c);border:1px solid var(--b);border-radius:8px;padding:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.k span{color:var(--m)}.k b{display:block;font-size:19px;margin-top:4px}
+input,select,button{font:inherit;padding:7px 9px;border:1px solid var(--b);border-radius:6px;background:var(--c);color:var(--t);margin:2px}
+button{background:var(--p);color:#fff;border:0;cursor:pointer}button.s{background:var(--m)}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{padding:6px 8px;border-bottom:1px solid var(--b);text-align:start;white-space:nowrap}
+.bad{color:var(--r)}.ok{color:var(--g)}
+@media(max-width:700px){#app{flex-direction:column}nav{width:100%;display:flex;overflow-x:auto}nav a{white-space:nowrap}}
+@media print{nav,.np{display:none}}
+</style></head><body><div id="app"></div>
+<script>
+const URL_='https://olucwkfukjbjvlrvhrxe.supabase.co',KEY='sb_publishable_UKAHQ0wTYauJpaGTQnnxiQ_DCgn8f9u';
+const sb=supabase.createClient(URL_,KEY);
+let me=null,view='dash',C={},cart={s:[],p:[]},tests=null,per='month',d1='',d2='';
+const $=s=>document.querySelector(s),v=s=>$('#'+s).value,n=s=>+v(s)||0;
+const e=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=x=>(+x||0).toLocaleString('ar-EG',{maximumFractionDigits:2});
+const P={admin:'*',accountant:['dash','cust','supp','sales','purch','pay','exp','cash','rep','audit'],sales:['dash','prod','cust','sales'],store:['dash','prod','purch']};
+const can=x=>me&&(P[me.role]==='*'||P[me.role].includes(x));
+const NAV=[['dash','الرئيسية'],['prod','المنتجات'],['cust','العملاء'],['supp','الموردون'],['sales','المبيعات'],['purch','المشتريات'],['pay','المدفوعات'],['exp','المصروفات'],['cash','الخزينة'],['rep','التقارير'],['users','المستخدمون'],['audit','سجل العمليات'],['set','الإعدادات']];
+const rpc=async(f,a)=>{const{data,error}=await sb.rpc(f,a);if(error)throw error;return data};
+const ins=async(t,o)=>{const{data,error}=await sb.from(t).insert(o).select().single();if(error)throw error;return data};
+const upd=async(t,id,o)=>{const{error}=await sb.from(t).update(o).eq('id',id);if(error)throw error};
+const g=async(t,o,sel='*')=>{let q=sb.from(t).select(sel);if(o)q=q.order(o);const{data}=await q;return data||[]};
+const T=(h,r)=>`<div class="tw"><table><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>${r.map(x=>`<tr>${x.map(y=>`<td>${y}</td>`).join('')}</tr>`).join('')}</table></div>`;
+const O=a=>a.map(x=>`<option value="${x.id}">${e(x.name)}</option>`).join('');
+const by=(a,i)=>a.find(x=>x.id==i)||{};
+const stk=p=>C.stock.filter(s=>s.product_id==p).reduce((a,s)=>a+ +s.qty,0);
+async function act(f){try{await f()}catch(x){alert(x.message||x.error_description||x)}R()}
+async function loadAll(){const[products,customers,suppliers,warehouses,accts,stock,cb,sbal]=await Promise.all([g('products','name'),g('customers','name'),g('suppliers','name'),g('warehouses','name'),g('cash_accounts','name'),g('stock_balances'),g('customer_balances'),g('supplier_balances')]);
+ C={products,customers,suppliers,warehouses,accts,stock,cb,sbal}}
+function range(){const t=new Date(),f=x=>x.toISOString().slice(0,10);if(per=='today')return[f(t),f(t)];if(per=='week'){const s=new Date(t);s.setDate(t.getDate()-6);return[f(s),f(t)]}
+ if(per=='custom')return[d1||f(t),d2||f(t)];return[f(new Date(t.getFullYear(),t.getMonth(),1)),f(t)]}
+async function V(){
+ if(view=='dash'){const[a,b]=range(),D=await rpc('dashboard',{p_from:a,p_to:b}),low=await g('low_stock'),k=(t,x)=>`<div class="card k"><span>${t}</span><b>${fmt(x)}</b></div>`;
+  return `<h2>الرئيسية</h2><div class="card np"><select id="per" onchange="per=v('per');R()">${[['today','اليوم'],['week','آخر 7 أيام'],['month','هذا الشهر'],['custom','فترة مخصصة']].map(x=>`<option value="${x[0]}" ${per==x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>${per=='custom'?`<input type="date" id="d1" value="${a}" onchange="d1=v('d1');R()"><input type="date" id="d2" value="${b}" onchange="d2=v('d2');R()">`:''}</div>
+  <div class="grid">${k('المبيعات',D.sales)}${k('المشتريات',D.purchases)}${k('المصروفات',D.expenses)}${k('صافي الربح المبدئي',D.sales-D.cogs-D.expenses)}${k('مستحق من العملاء',D.receivables)}${k('مستحق للموردين',D.payables)}${k('قيمة المخزون',D.inventory_value)}${k('عدد المنتجات',D.products)}${k('المقبوضات',D.receipts)}${k('المدفوعات',D.payments_out)}</div>
+  <div class="card"><b>منتجات منخفضة المخزون (${low.length})</b>${low.length?T(['المنتج','الحالي','الحد الأدنى',''],low.map(p=>[e(p.name),p.stock,p.min_stock,'<span class="bad">المنتج يحتاج إلى إعادة طلب</span>'])):'<p>لا يوجد</p>'}</div>
+  ${me.role=='admin'?`<div class="card np"><b>اختبار السيناريو على القاعدة الحقيقية</b><p>ينشئ بيانات تجريبية فعلية (منتج وعميل ومورد وفواتير) باسم TEST.</p><button onclick="runTests()">تشغيل الاختبار</button>${tests?T(['البند','الفعلي','المتوقع','النتيجة'],tests.map(t=>[t[0],t[1],t[2],t[3]?'<span class="ok">نجح</span>':'<span class="bad">فشل</span>'])):''}</div>`:''}`}
+ if(view=='prod')return `<h2>المنتجات</h2><div class="card np"><input id="pn" placeholder="الاسم"><input id="pc" placeholder="الكود"><input id="pbc" placeholder="باركود"><input id="pp" type="number" placeholder="شراء"><input id="ps" type="number" placeholder="بيع"><input id="pw" type="number" placeholder="جملة"><input id="pm" type="number" placeholder="الحد الأدنى"><input id="pq" type="number" placeholder="رصيد افتتاحي"><select id="pwh">${O(C.warehouses)}</select><button onclick="act(async()=>{const p=await ins('products',{name:v('pn'),code:v('pc')||null,barcode:v('pbc'),purchase_price:n('pp'),sale_price:n('ps'),wholesale_price:n('pw'),min_stock:n('pm'),avg_cost:n('pp')});if(n('pq')>0)await rpc('approve_stocktake',{p_warehouse:v('pwh'),p_items:[{product_id:p.id,actual:n('pq')}]})})">إضافة</button></div>
+  <div class="card"><input id="q" placeholder="بحث بالاسم / الكود / الباركود" value="${e(window._q||'')}" oninput="window._q=this.value;R(1)">${T(['الكود','الاسم','باركود','تكلفة','بيع','المخزون','الحالة'],C.products.filter(p=>!window._q||[p.name,p.code,p.barcode].join(' ').includes(window._q)).map(p=>[e(p.code),e(p.name),e(p.barcode),fmt(p.avg_cost),fmt(p.sale_price),`<span class="${stk(p.id)<=p.min_stock?'bad':''}">${stk(p.id)}</span>`,p.active?`<button class="s" onclick="act(()=>upd('products','${p.id}',{active:false}))">تعطيل</button>`:'معطل']))}</div>`;
+ if(view=='cust'||view=='supp'){const c=view=='cust',L=c?C.customers:C.suppliers,B=c?C.cb:C.sbal;return `<h2>${c?'العملاء':'الموردون'}</h2><div class="card np"><input id="cn" placeholder="الاسم"><input id="ch" placeholder="الهاتف"><input id="co" type="number" placeholder="رصيد افتتاحي"><button onclick="act(()=>ins('${c?'customers':'suppliers'}',{name:v('cn'),phone:v('ch'),opening_balance:n('co')}))">إضافة</button></div><div class="card">${T(['الاسم','الهاتف','الرصيد'],L.map(x=>[e(x.name),e(x.phone),fmt(by(B,x.id).balance)]))}</div>`}
+ if(view=='sales'||view=='purch'){const s=view=='sales',k=s?'s':'p',cr=cart[k],L=await g(s?'sales_invoices':'purchase_invoices','created_at'),tot=cr.reduce((a,l)=>a+l.qty*l.price-l.discount,0);
+  return `<h2>${s?'فواتير المبيعات':'فواتير المشتريات'}</h2><div class="card np"><select id="ip">${O(s?C.customers:C.suppliers)}</select><select id="iw">${O(C.warehouses)}</select><select id="il">${O(C.products.filter(p=>p.active))}</select><input id="iq" type="number" value="1" style="width:80px"><input id="ir" type="number" placeholder="السعر" style="width:90px"><input id="id" type="number" placeholder="خصم" style="width:80px"><button class="s" onclick="addL('${k}')">+ بند</button>
+  ${cr.length?T(['المنتج','الكمية','السعر','خصم','الإجمالي'],cr.map(l=>[e(by(C.products,l.product_id).name),l.qty,l.price,l.discount,fmt(l.qty*l.price-l.discount)])):''}<p>الإجمالي: <b>${fmt(tot)}</b></p><input id="ipd" type="number" placeholder="المدفوع (0 = آجل)"><select id="ia">${O(C.accts)}</select><button onclick="act(async()=>{const pd=n('ipd');await rpc('${s?'create_sale':'create_purchase'}',{${s?'p_customer':'p_supplier'}:v('ip'),p_warehouse:v('iw'),p_items:cart.${k},p_paid:pd,p_account:pd>0?v('ia'):null,p_method:pd>0?'cash':'credit'});cart.${k}=[]})">حفظ الفاتورة</button></div>
+  <div class="card">${T(['رقم','التاريخ','الإجمالي','المدفوع','المتبقي'],L.reverse().map(x=>[x.number,x.date,fmt(x.total),fmt(x.paid),fmt(x.total-x.paid)]))}</div>`}
+ if(view=='pay'){const cu=window._yk!='supp',L=await g('payments','created_at');return `<h2>المدفوعات</h2><div class="card np"><select id="yk" onchange="window._yk=v('yk')=='receipt'?'cust':'supp';R()"><option value="receipt" ${cu?'selected':''}>مقبوضات عميل</option><option value="payment" ${cu?'':'selected'}>مدفوعات مورد</option></select><select id="yp">${O(cu?C.customers:C.suppliers)}</select><input id="ya" type="number" placeholder="المبلغ"><select id="yc">${O(C.accts)}</select><button onclick="act(()=>rpc('record_payment',{p_kind:v('yk'),p_party:v('yp'),p_amount:n('ya'),p_account:v('yc')}))">تسجيل</button></div><div class="card">${T(['التاريخ','النوع','الطرف','المبلغ','المستند'],L.reverse().map(p=>[p.date,p.kind=='receipt'?'مقبوضات':'مدفوعات',e(p.kind=='receipt'?by(C.customers,p.customer_id).name:by(C.suppliers,p.supplier_id).name),fmt(p.amount),e(p.doc_ref)]))}</div>`}
+ if(view=='exp'){const L=await g('expenses','created_at');return `<h2>المصروفات</h2><div class="card np"><select id="ec">${['إيجار','كهرباء','مياه','إنترنت','رواتب','نقل','صيانة','تسويق','أخرى'].map(x=>`<option>${x}</option>`).join('')}</select><input id="ed" placeholder="الوصف"><input id="ea" type="number" placeholder="المبلغ"><select id="ex">${O(C.accts)}</select><button onclick="act(()=>rpc('create_expense',{p_category:v('ec'),p_desc:v('ed'),p_amount:n('ea'),p_account:v('ex')}))">حفظ</button></div><div class="card">${T(['التاريخ','التصنيف','الوصف','المبلغ'],L.reverse().map(x=>[x.date,x.category,e(x.description),fmt(x.amount)]))}</div>`}
+ if(view=='cash')return `<h2>الخزينة</h2><div class="card np"><input id="an" placeholder="اسم حساب جديد"><input id="ao" type="number" placeholder="رصيد افتتاحي"><button onclick="act(()=>ins('cash_accounts',{name:v('an'),opening_balance:n('ao'),balance:n('ao')}))">إضافة حساب</button></div><div class="card">${T(['الحساب','الرصيد'],C.accts.map(a=>[e(a.name),fmt(a.balance)]))}</div>`;
+ if(view=='rep'){const it=await g('sales_invoice_items',null,'qty,line_total,unit_cost,product_id'),m={};it.forEach(l=>{const r=m[l.product_id]||(m[l.product_id]={q:0,rev:0,c:0});r.q+=+l.qty;r.rev+=+l.line_total;r.c+=l.qty*l.unit_cost});
+  return `<h2>التقارير</h2><div class="card"><b>ربحية المنتجات</b>${T(['المنتج','الكمية','الإيراد','التكلفة','مجمل الربح'],Object.keys(m).map(i=>[e(by(C.products,i).name),m[i].q,fmt(m[i].rev),fmt(m[i].c),fmt(m[i].rev-m[i].c)]))}</div>`}
+ if(view=='users'){const L=await g('profiles','created_at');return `<h2>المستخدمون</h2><div class="card"><p>المستخدم الجديد يسجّل من شاشة الدخول ثم تفعّله هنا.</p>${T(['الاسم','البريد','الدور','مفعّل'],L.map(u=>[e(u.name),e(u.username),`<select onchange="act(()=>upd('profiles','${u.id}',{role:this.value}))">${['admin','accountant','sales','store'].map(r=>`<option ${u.role==r?'selected':''}>${r}</option>`).join('')}</select>`,`<input type="checkbox" ${u.active?'checked':''} ${u.id==me.id?'disabled':''} onchange="act(()=>upd('profiles','${u.id}',{active:this.checked}))">`]))}</div>`}
+ if(view=='audit'){const{data}=await sb.from('audit_logs').select('*').order('id',{ascending:false}).limit(300);return `<h2>سجل العمليات</h2><div class="card">${T(['الوقت','المستخدم','العملية','القسم','الوصف'],(data||[]).map(a=>[new Date(a.created_at).toLocaleString('ar-EG'),e(a.user_name),a.action,a.entity,e(a.description)]))}</div>`}
+ if(view=='set'){const{data:s}=await sb.from('company_settings').select('*').single();return `<h2>الإعدادات</h2><div class="card np"><input id="sc" value="${e(s.company_name)}"><input id="sp" value="${e(s.invoice_prefix)}"><label><input type="checkbox" id="sn" ${s.negative_stock?'checked':''}> السماح بالمخزون السالب</label><label><input type="checkbox" id="st" ${s.tax_enabled?'checked':''}> تفعيل الضريبة</label><input id="sx" type="number" value="${s.tax_pct}" style="width:70px">%<button onclick="act(()=>upd('company_settings',1,{company_name:v('sc'),invoice_prefix:v('sp'),negative_stock:$('#sn').checked,tax_enabled:$('#st').checked,tax_pct:n('sx')}))">حفظ</button></div>`}}
+async function R(q){
+ if(!me){$('#app').innerHTML=`<main><div class="card" style="max-width:340px;margin:60px auto"><h2>تسجيل الدخول</h2><input id="lu" type="email" placeholder="البريد" style="width:95%"><input id="lp" type="password" placeholder="كلمة المرور" style="width:95%"><button onclick="login()" style="width:95%">دخول</button><button class="s" onclick="signup()" style="width:95%">إنشاء حساب (الأول = مدير)</button></div></main>`;return}
+ if(!me.active){$('#app').innerHTML=`<main><div class="card"><h2>حسابك بانتظار التفعيل من المدير</h2><button onclick="logout()">خروج</button></div></main>`;return}
+ if(!can(view))view='dash';await loadAll();const h=await V();
+ $('#app').innerHTML=`<nav class="np"><b style="display:block;padding:8px">${e(me.name)}</b>${NAV.filter(x=>can(x[0])).map(x=>`<a class="${view==x[0]?'on':''}" onclick="view='${x[0]}';R()">${x[1]}</a>`).join('')}<a onclick="logout()">خروج</a></nav><main>${h}</main>`;
+ if(q){const i=$('#q');i.focus();i.setSelectionRange(99,99)}}
+function addL(k){const p=by(C.products,v('il')),pr=n('ir')||(k=='s'?p.sale_price:p.purchase_price);if(n('iq')<=0)return alert('الكمية غير صحيحة');cart[k].push({product_id:p.id,qty:n('iq'),price:+pr,discount:n('id')});R()}
+async function login(){const{error}=await sb.auth.signInWithPassword({email:v('lu'),password:v('lp')});if(error)return alert(error.message);await boot()}
+async function signup(){const{error}=await sb.auth.signUp({email:v('lu'),password:v('lp')});if(error)return alert(error.message);alert('تم الإنشاء. سجّل الدخول (وأكّد البريد إن كان التأكيد مفعّلًا).')}
+async function logout(){await sb.auth.signOut();me=null;R()}
+async function boot(){const{data:{user}}=await sb.auth.getUser();me=null;if(user){const{data}=await sb.from('profiles').select('*').eq('id',user.id).single();me=data}R()}
+async function runTests(){if(!confirm('سينشئ بيانات تجريبية حقيقية. متابعة؟'))return;const r=[],ck=(t,a,b)=>r.push([t,a,b,+a===+b]);
+ try{await loadAll();const wh=C.warehouses[0].id,ac=C.accts[0].id,tag='TEST-'+Date.now(),
+ stockOf=async p=>{const{data}=await sb.from('stock_balances').select('qty').eq('product_id',p);return data.reduce((a,x)=>a+ +x.qty,0)},
+ bal=async c=>(await sb.from('customer_balances').select('balance').eq('id',c).single()).data.balance,
+ cash=async()=>(await sb.from('cash_accounts').select('balance').eq('id',ac).single()).data.balance;
+ const p=await ins('products',{name:'iPhone Case',code:tag,purchase_price:200,sale_price:300,avg_cost:200,min_stock:3}),c=await ins('customers',{name:'Ahmed '+tag}),s=await ins('suppliers',{name:'مورد '+tag});
+ await rpc('approve_stocktake',{p_warehouse:wh,p_items:[{product_id:p.id,actual:10}]});ck('المخزون الافتتاحي',await stockOf(p.id),10);
+ await rpc('create_sale',{p_customer:c.id,p_warehouse:wh,p_items:[{product_id:p.id,qty:2,price:300,discount:0}],p_paid:0,p_method:'credit'});ck('المخزون بعد البيع',await stockOf(p.id),8);ck('رصيد العميل بعد البيع',await bal(c.id),600);
+ await rpc('record_payment',{p_kind:'receipt',p_party:c.id,p_amount:600,p_account:ac});ck('رصيد العميل بعد الدفع',await bal(c.id),0);
+ await rpc('create_purchase',{p_supplier:s.id,p_warehouse:wh,p_items:[{product_id:p.id,qty:5,price:200,discount:0}],p_paid:0,p_method:'credit'});ck('المخزون بعد الشراء',await stockOf(p.id),13);
+ const b0=+await cash();await rpc('create_expense',{p_category:'أخرى',p_desc:tag,p_amount:500,p_account:ac});ck('انخفاض الخزينة بالمصروف',b0-await cash(),500);
+ const{count}=await sb.from('audit_logs').select('*',{count:'exact',head:true});r.push(['عدد سجلات Audit',count,'> 0',count>0])}catch(x){r.push(['خطأ: '+(x.message||x),'','',false])}
+ tests=r;R()}
+sb.auth.getSession().then(boot);
+</script></body></html>
